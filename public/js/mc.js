@@ -113,9 +113,9 @@
 				throw "key exists!"
 			}
 		},
-		retrieve: function(key) {
+		get: function(key) {
 			if (this.dictionary[key]) {
-				this.dictionary[key] = value;
+				return this.dictionary[key];
 			} else {
 				throw "no value for that key!"
 			}
@@ -179,14 +179,15 @@
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
-	MC.makeController = function(messenger, injector) {
+	MC.makeCommand = function(messenger, injector) {
 		return Trait.compose(
 				MC.makeMediator(messenger),
 				Trait({
 					_injector: injector,
 					get: function(key) {
-						_injector.retrieve(key);
-					}
+						_injector.get(key);
+					},
+					execute: Trait.required
 				})
 			);
 	}
@@ -200,15 +201,29 @@
 	MC.TContext = Trait({
 		_messenger: Trait.create(Object.prototype, MC.TObservable),
 		_injector: Trait.create(Object.prototype, MC.TMap),
-		createActor: function() {
-			return Trait.create(Object.prototype, MC.makeActor(this._messenger));
+		createActor: function(key, obj) {
+			var actor = Trait.create(
+				Object.prototype,
+				Trait.compose(
+					MC.makeActor(this._messenger), 
+					Trait(obj)));
+			this._injector.map(key, actor);
+			return this;
 		},
-		createMediator: function() {
-			return Trait.create(Object.prototype, MC.makeMediator(this._messenger));
+		createMediator: function(key, el, obj) {
+			var mediator = Trait.create(
+				Object.prototype, 
+				Trait.compose(
+					MC.makeMediator(this._messenger),
+					Trait(obj)));
+			this._injector.map(key, mediator);
+			return this;
 		},
-		createController: function() {
-			return Trait.create(Object.prototype, MC.makeController(
+		mapCommand: function(ev, callback) {
+			return Trait.create(Object.prototype, MC.makeCommand(
 				this._messenger, this._injector));
+			// TODO callback becomes command execute
+			// and is bound to event
 		}
 	});
 	
