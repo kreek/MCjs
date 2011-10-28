@@ -1,4 +1,4 @@
-describe("TContext", function () {
+describe("Context", function () {
 
     beforeEach(function () {
 		this.mc = MC.Context();
@@ -13,42 +13,43 @@ describe("TContext", function () {
 		expect(this.mc).not.toBeUndefined();
 	});
 	
-	it("creates an actor", function () {
-		var actor = this.mc.Actor(Trait({
+	it("creates a model", function () {
+		var model = this.mc.Model({
 			five: 5
-		}));
-		expect(actor).not.toBeUndefined();
-		expect(actor).not.toBeNull();
-		expect(actor.five).toBe(5);
+		});
+		expect(model).not.toBeUndefined();
+		expect(model).not.toBeNull();
+		expect(model.five).toBe(5);
 	});
 	
-	it("creates a command", function () {
-		var command = this.mc.Command(Trait({
-			execute: function() {
+	it("creates a controller", function () {
+		var controller = this.mc.Controller({
+			a: function() {
 				return true;
 			}
-		}));
-		expect(command).not.toBeUndefined();
-		expect(command).not.toBeNull();
-		expect(command.execute()).toBeTruthy();
+		});
+		expect(controller).not.toBeUndefined();
+		expect(controller).not.toBeNull();
+		expect(controller.a()).toBeTruthy();
 	});
 	
-	it("maps a command to an event", function () {
-		var actor = this.mc.Actor(Trait({
-			five: 5
-		}));
-		var command = this.mc.Command(Trait({
+	it("bind a function to an event", function () {
+		var model = this.mc.Model({
+			i: 0
+		});
+
+		var controller = this.mc.Controller({
 			execute: function() {
-				var i = 5;
-				i += 1;
-				console.log(i);
+				var model = this.m.get('model');
+				model.i++;
 			}
-		}));
-		console.log(command);
-		this.mc.mapCommand("command:test", command);
-		this.mc.trigger("command:test");
-		expect(command).not.toBeUndefined();
-		expect(command).not.toBeNull();
+		});
+		
+		this.mc.m.put('model', model);
+		this.mc.bind('execute', controller.execute);
+		this.mc.trigger('execute');
+
+		expect(model.i).toBe(1);
 	});
 
 });

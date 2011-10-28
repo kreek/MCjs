@@ -1,4 +1,4 @@
-describe("TObservable", function () {
+describe("Observable", function () {
 
     beforeEach(function () {
 		this._messenger = Trait.create(Object.prototype, MC.TObservable);

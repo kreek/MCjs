@@ -105,20 +105,38 @@
 	///////////////////////////////////////////////////////////////////////////
 	
 	MC.TMap = Trait({
-		dictionary: {},
-		map: function(key, value) {
-			if (!this.dictionary[key]) {
-				this.dictionary[key] = value;
+		count: 0,
+		put: function(key, value) {
+			if (!this.key) {
+				this.key = value;
+				this.count++;
 			} else {
-				throw "key exists!"
+				throw "key exists"
 			}
 		},
 		get: function(key) {
-			if (this.dictionary[key]) {
-				return this.dictionary[key];
+			if (this.key) {
+				return this.key;
 			} else {
-				throw "no value for that key!"
+				throw "no value for that key"
 			}
+		},
+		remove: function(key) {
+			var obj = this.key;
+			this.key = null;
+			delete this.key;
+			this.count--;
+			return obj;
+		},
+		getValue: function(value) {
+			for (obj in this) {
+				if (this[obj] == v) {
+					return obj;
+				}
+			}
+		},
+		size: function(){
+			return this.count;
 		}
 	});
 	
@@ -132,12 +150,10 @@
 		return Trait({
 			_messenger: messenger,
 			bind: function(ev, callback, context) {
-				this._messenger.bind(ev, callback);
-				return this;
+				return this._messenger.bind(ev, callback, context);
 			},
 			unbind: function(ev, callback) {
-				this._messenger.unbind(ev, callback);
-				return this;
+				return this._messenger.unbind(ev, callback);
 			}
 		});
 	},
@@ -146,8 +162,7 @@
 		return Trait({
 			_messenger: messenger,
 			trigger: function(eventName) {
-				this._messenger.trigger(eventName);
-				return this;
+				return this._messenger.trigger(eventName);
 			}
 		});
 	}
@@ -180,19 +195,12 @@
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
-	// COMMAND
+	// CONTROLLER
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
-	MC.makeCommand = function(messenger, injector) {
-		return Trait.compose(
-			MC.makeDispatcher(messenger),
-			MC.makeUnique(),
-			Trait({
-				_injector: injector,
-				execute: Trait.required
-			})
-		);
+	MC.makeController = function(messenger) {
+		return MC.makeDispatcher(messenger);
 	}
 	
 	///////////////////////////////////////////////////////////////////////////
@@ -201,36 +209,44 @@
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
-	MC.makeContext = function(injector) {
+	MC.makeContext = function(messenger) {
 		return Trait({
-			_injector: injector,
-			Actor: function(trait) {
+			_messenger: messenger,
+			m: Object.create(Object.prototype, MC.TMap),
+			v: Object.create(Object.prototype, MC.TMap),
+			c: Object.create(Object.prototype, MC.TMap),
+			Model: function(obj) {
 				var actor = Object.create(
 					Object.prototype,
 					Trait.compose(
 						MC.makeActor(this._messenger), 
-						trait));
+						Trait(obj)));
 				return actor;
 			},
-			Mediator: function(key, el, obj) {
-				var mediator = Trait.create(
+			View: function(obj) {
+				var mediator = Object.create(
 					Object.prototype, 
 					Trait.compose(
 						MC.makeMediator(this._messenger),
 						Trait(obj)));
-				this._injector.map(key, mediator);
-				return this;
+				return mediator;
 			},
-			Controller: function(trait) {
-				var controller = Trait.create(
+			Controller: function(obj) {
+				var controller = Object.create(
 					Object.prototype, 
 					Trait.compose(
-						MC.makeController(this._messenger, this._injector),
-						trait));
+						MC.makeController(this._messenger),
+						Trait(obj)));
 				return controller;
 			},
-			map: function(key, value) {
-				this._injector.map(key, value);
+			bind: function(ev, callback) {
+				return this._messenger.bind(ev, callback, this);
+			},
+			unbind: function(ev, callback) {
+				return this._messenger.unbind(ev, callback);
+			},
+			trigger: function(ev) {
+				return this._messenger.trigger(ev);
 			}
 		})
 	};
@@ -240,54 +256,14 @@
 			trait = Trait({});
 		}
 		var messenger = Trait.create(Object.prototype, MC.TObservable);
-		var injector = Trait.create(Object.prototype, MC.TMap);
 		var context = Trait.create(
 			Object.prototype,
 			Trait.compose(
-				MC.makeListener(messenger),
-				MC.makeDispatcher(messenger),
-				MC.makeContext(injector),
+				MC.makeContext(messenger),
 				trait
 			)
 		);
 		return context;
 	}
-	
-	MC.TContext = Trait({
-		_messenger: Trait.create(Object.prototype, MC.TObservable),
-		_injector: Trait.create(Object.prototype, MC.TMap),
-		Actor: function(trait) {
-			var actor = Trait.create(
-				Object.prototype,
-				Trait.compose(
-					MC.makeActor(this._messenger), 
-					trait));
-			return actor;
-		},
-		Mediator: function(key, el, obj) {
-			var mediator = Trait.create(
-				Object.prototype, 
-				Trait.compose(
-					MC.makeMediator(this._messenger),
-					Trait(obj)));
-			this._injector.map(key, mediator);
-			return this;
-		},
-		Command: function(trait) {
-			var command = Object.create(
-				Object.prototype, 
-				Trait.compose(
-					MC.makeCommand(this._messenger, this._injector),
-					trait));
-			return command;
-		},
-		mapCommand: function(ev, command) {
-			this._messenger.bind(ev, command.execute);
-			return this;
-		},
-		map: function(key, value) {
-			this._injector.map(key, actor);
-		}
-	});
 	
 })();
