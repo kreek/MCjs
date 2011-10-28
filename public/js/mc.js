@@ -128,7 +128,7 @@
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
-	MC.makeEventDispatcher = function(messenger) {
+	MC.makeListener = function(messenger) {
 		return Trait({
 			_messenger: messenger,
 			bind: function(ev, callback, context) {
@@ -138,13 +138,19 @@
 			unbind: function(ev, callback) {
 				this._messenger.unbind(ev, callback);
 				return this;
-			},
+			}
+		});
+	},
+	
+	MC.makeDispatcher = function(messenger) {
+		return Trait({
+			_messenger: messenger,
 			trigger: function(eventName) {
 				this._messenger.trigger(eventName);
 				return this;
 			}
 		});
-	};
+	}
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
@@ -155,7 +161,7 @@
 	MC.makeActor = function(messenger) {
 		return Trait.compose(
 			MC.makeUnique(),
-			MC.makeEventDispatcher(messenger)
+			MC.makeDispatcher(messenger)
 		);
 	};
 	
@@ -167,29 +173,26 @@
 
 	MC.makeMediator = function(messenger) {
 		return Trait.compose( 
-			MC.makeEventDispatcher(messenger), 
-			Trait({
-
-			}));
+			MC.makeActor(messenger), 
+			MC.makeDispatcher(messenger)
+		);
 	}
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
-	// CONTROLLER
+	// COMMAND
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
 	MC.makeCommand = function(messenger, injector) {
 		return Trait.compose(
-				MC.makeMediator(messenger),
-				Trait({
-					_injector: injector,
-					get: function(key) {
-						_injector.get(key);
-					},
-					execute: Trait.required
-				})
-			);
+			MC.makeDispatcher(messenger),
+			MC.makeUnique(),
+			Trait({
+				_injector: injector,
+				execute: Trait.required
+			})
+		);
 	}
 	
 	///////////////////////////////////////////////////////////////////////////
@@ -198,19 +201,70 @@
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
+	MC.makeContext = function(injector) {
+		return Trait({
+			_injector: injector,
+			Actor: function(trait) {
+				var actor = Object.create(
+					Object.prototype,
+					Trait.compose(
+						MC.makeActor(this._messenger), 
+						trait));
+				return actor;
+			},
+			Mediator: function(key, el, obj) {
+				var mediator = Trait.create(
+					Object.prototype, 
+					Trait.compose(
+						MC.makeMediator(this._messenger),
+						Trait(obj)));
+				this._injector.map(key, mediator);
+				return this;
+			},
+			Controller: function(trait) {
+				var controller = Trait.create(
+					Object.prototype, 
+					Trait.compose(
+						MC.makeController(this._messenger, this._injector),
+						trait));
+				return controller;
+			},
+			map: function(key, value) {
+				this._injector.map(key, value);
+			}
+		})
+	};
+	
+	MC.Context = function(trait) {
+		if (!trait) {
+			trait = Trait({});
+		}
+		var messenger = Trait.create(Object.prototype, MC.TObservable);
+		var injector = Trait.create(Object.prototype, MC.TMap);
+		var context = Trait.create(
+			Object.prototype,
+			Trait.compose(
+				MC.makeListener(messenger),
+				MC.makeDispatcher(messenger),
+				MC.makeContext(injector),
+				trait
+			)
+		);
+		return context;
+	}
+	
 	MC.TContext = Trait({
 		_messenger: Trait.create(Object.prototype, MC.TObservable),
 		_injector: Trait.create(Object.prototype, MC.TMap),
-		createActor: function(key, obj) {
+		Actor: function(trait) {
 			var actor = Trait.create(
 				Object.prototype,
 				Trait.compose(
 					MC.makeActor(this._messenger), 
-					Trait(obj)));
-			this._injector.map(key, actor);
-			return this;
+					trait));
+			return actor;
 		},
-		createMediator: function(key, el, obj) {
+		Mediator: function(key, el, obj) {
 			var mediator = Trait.create(
 				Object.prototype, 
 				Trait.compose(
@@ -219,11 +273,20 @@
 			this._injector.map(key, mediator);
 			return this;
 		},
-		mapCommand: function(ev, callback) {
-			return Trait.create(Object.prototype, MC.makeCommand(
-				this._messenger, this._injector));
-			// TODO callback becomes command execute
-			// and is bound to event
+		Command: function(trait) {
+			var command = Object.create(
+				Object.prototype, 
+				Trait.compose(
+					MC.makeCommand(this._messenger, this._injector),
+					trait));
+			return command;
+		},
+		mapCommand: function(ev, command) {
+			this._messenger.bind(ev, command.execute);
+			return this;
+		},
+		map: function(key, value) {
+			this._injector.map(key, actor);
 		}
 	});
 	

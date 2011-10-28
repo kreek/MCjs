@@ -1,28 +1,54 @@
 describe("TContext", function () {
 
     beforeEach(function () {
-		this.context = Trait.create(Object.prototype, MC.TContext);
+		this.mc = MC.Context();
     });
 
 	afterEach(function () {
-		this.context = null;
+		this.mc = null;
 	});
 
 	it("exists", function () {
-		expect(this.context).not.toBeNull();
-		expect(this.context).not.toBeUndefined();
+		expect(this.mc).not.toBeNull();
+		expect(this.mc).not.toBeUndefined();
 	});
 	
-	it("creates, maps, and retrieves an actor", function () {
-		this.context.createActor('actor', {
-			five: 5,
-			isTrue: function() {
+	it("creates an actor", function () {
+		var actor = this.mc.Actor(Trait({
+			five: 5
+		}));
+		expect(actor).not.toBeUndefined();
+		expect(actor).not.toBeNull();
+		expect(actor.five).toBe(5);
+	});
+	
+	it("creates a command", function () {
+		var command = this.mc.Command(Trait({
+			execute: function() {
 				return true;
 			}
-		});
-		var actor = this.context._injector.get('actor');
-		expect(actor.five).toBe(5);
-		expect(actor.isTrue).toBeTruthy();
+		}));
+		expect(command).not.toBeUndefined();
+		expect(command).not.toBeNull();
+		expect(command.execute()).toBeTruthy();
+	});
+	
+	it("maps a command to an event", function () {
+		var actor = this.mc.Actor(Trait({
+			five: 5
+		}));
+		var command = this.mc.Command(Trait({
+			execute: function() {
+				var i = 5;
+				i += 1;
+				console.log(i);
+			}
+		}));
+		console.log(command);
+		this.mc.mapCommand("command:test", command);
+		this.mc.trigger("command:test");
+		expect(command).not.toBeUndefined();
+		expect(command).not.toBeNull();
 	});
 
 });
