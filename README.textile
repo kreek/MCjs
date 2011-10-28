@@ -1,0 +1,3 @@
+h1. MCjs
+
+Yet another JavaScript MVC framework, this one is built on traits.js and enforces M => V => C flow. That is Models alert views of data changes, Views trigger commands (functions) in controllers, and Controllers update Models.

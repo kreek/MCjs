@@ -213,8 +213,6 @@
 		return Trait({
 			_messenger: messenger,
 			m: Object.create(Object.prototype, MC.TMap),
-			v: Object.create(Object.prototype, MC.TMap),
-			c: Object.create(Object.prototype, MC.TMap),
 			Model: function(obj) {
 				var actor = Object.create(
 					Object.prototype,
