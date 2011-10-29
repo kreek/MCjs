@@ -6,22 +6,20 @@
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
-	// Save a reference to the global object.
-	var root = this;
 	var MC;
 
 	// namespace
 	if (typeof exports !== "undefined") {
 		MC = exports;
 	} else {
-		MC = root.MC = {};
+		MC = this.MC = {};
 	}
 	
 	// version
 	MC.version = "0.0.1";
 	
-	// jQuery, Zepto, or Ender owns the `$` variable
-	var $ = root.jQuery || root.Zepto || root.ender;
+	// jQuery or Zepto own the `$` variable
+	var $ = this.jQuery || this.Zepto;
 	
 	MC.guid = function(){
 		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -37,25 +35,25 @@
 	///////////////////////////////////////////////////////////////////////////
 
 	MC.TObservable = Trait({
-		_callbacks: {},
-		bind: function(ev, callback, context) {
-			var calls = this._callbacks;
-			var list  = calls[ev] || (calls[ev] = []);
-			list.push([callback, context]);
+		_fns: {},
+		bind: function(e, fn, context) {
+			var calls = this._fns;
+			var list  = calls[e] || (calls[e] = []);
+			list.push([fn, context]);
 			return this;
 		},
-		unbind: function(ev, callback) {
+		unbind: function(e, fn) {
 			var calls;
-			if (!ev) {
-				this._callbacks = {};
-			} else if (calls = this._callbacks) {
-				if (!callback) {
-					calls[ev] = [];
+			if (!e) {
+				this._fns = {};
+			} else if (calls = this._fns) {
+				if (!fn) {
+					calls[e] = [];
 				} else {
-					var list = calls[ev];
+					var list = calls[e];
 					if (!list) return this;
 					for (var i = 0, l = list.length; i < l; i++) {
-						if (list[i] && callback === list[i][0]) {
+						if (list[i] && fn === list[i][0]) {
 							list[i] = null;
 							break;
 						}
@@ -64,19 +62,18 @@
 			}
 		return this;
 		},
-		trigger: function(eventName) {
-			var list, calls, ev, callback, args;
+		trigger: function(eventName, body) {
+			var list, calls, e, fn, args;
 			var both = 2;
-			if (!(calls = this._callbacks)) return this;
+			if (!(calls = this._fns)) return this;
 			while (both--) {
-				ev = both ? eventName : 'all';
-				if (list = calls[ev]) {
+				e = both ? eventName : 'all';
+				if (list = calls[e]) {
 					for (var i = 0, l = list.length; i < l; i++) {
-						if (!(callback = list[i])) {
+						if (!(fn = list[i])) {
 							list.splice(i, 1); i--; l--;
 						} else {
-							args = both ? Array.prototype.slice.call(arguments, 1) : arguments;
-							callback[0].apply(callback[1] || this, args);
+							fn[0].apply(fn[1] || this, [body]);
 						}
 					}
 				}
@@ -149,11 +146,11 @@
 	MC.makeListener = function(messenger) {
 		return Trait({
 			_messenger: messenger,
-			bind: function(ev, callback, context) {
-				return this._messenger.bind(ev, callback, context);
+			bind: function(e, fn, context) {
+				return this._messenger.bind(e, fn, context);
 			},
-			unbind: function(ev, callback) {
-				return this._messenger.unbind(ev, callback);
+			unbind: function(e, fn) {
+				return this._messenger.unbind(e, fn);
 			}
 		});
 	},
@@ -161,8 +158,8 @@
 	MC.makeDispatcher = function(messenger) {
 		return Trait({
 			_messenger: messenger,
-			trigger: function(eventName) {
-				return this._messenger.trigger(eventName);
+			trigger: function(eventName, body) {
+				return this._messenger.trigger(eventName, body);
 			}
 		});
 	}
@@ -176,7 +173,10 @@
 	MC.makeActor = function(messenger) {
 		return Trait.compose(
 			MC.makeUnique(),
-			MC.makeDispatcher(messenger)
+			MC.makeDispatcher(messenger),
+			Trait({
+				initialize: function() {}
+			})
 		);
 	};
 	
@@ -186,10 +186,29 @@
 	//
 	///////////////////////////////////////////////////////////////////////////
 
-	MC.makeMediator = function(messenger) {
+	MC.makeView = function(messenger, el) {
 		return Trait.compose( 
 			MC.makeActor(messenger), 
-			MC.makeDispatcher(messenger)
+			MC.makeListener(messenger),
+			Trait({
+				el: Trait.required,
+				eventSplitter: /^(\w+)\s*(.*)$/,
+				delegateEvents: function() {
+					var eventName, key, match, fn, selector, results;
+					results = [];
+					for (key in this.events) {
+						fn = this[this.events[key]];
+						if (typeof fn !== 'function') {
+							throw "events must be bound to a function";
+						}
+						match = key.match(this.eventSplitter);
+						eventName = match[1];
+						selector = match[2];
+						results.push(this.el.bind(eventName, $.proxy(fn, this)));
+					}
+					return results;
+			    }
+			})
 		);
 	}
 	
@@ -210,43 +229,49 @@
 	///////////////////////////////////////////////////////////////////////////
 	
 	MC.makeContext = function(messenger) {
-		return Trait({
-			_messenger: messenger,
-			m: Object.create(Object.prototype, MC.TMap),
-			Model: function(obj) {
-				var actor = Object.create(
-					Object.prototype,
-					Trait.compose(
-						MC.makeActor(this._messenger), 
-						Trait(obj)));
-				return actor;
-			},
-			View: function(obj) {
-				var mediator = Object.create(
-					Object.prototype, 
-					Trait.compose(
-						MC.makeMediator(this._messenger),
-						Trait(obj)));
-				return mediator;
-			},
-			Controller: function(obj) {
-				var controller = Object.create(
-					Object.prototype, 
-					Trait.compose(
-						MC.makeController(this._messenger),
-						Trait(obj)));
-				return controller;
-			},
-			bind: function(ev, callback) {
-				return this._messenger.bind(ev, callback, this);
-			},
-			unbind: function(ev, callback) {
-				return this._messenger.unbind(ev, callback);
-			},
-			trigger: function(ev) {
-				return this._messenger.trigger(ev);
-			}
-		})
+		var context = Trait.override(
+			Trait({
+				// the system messenger, injected into all actors
+				_messenger: messenger,
+				// model dictionary 
+				m: Object.create(Object.prototype, MC.TMap),
+				Model: function(trait) {
+					var actor = Object.create(
+						Object.prototype,
+						Trait.override(
+							trait,
+							MC.makeActor(this._messenger)
+						));
+					actor.initialize();
+					return actor;
+				},
+				View: function(trait) {
+					var view = Object.create(
+						Object.prototype, 
+						Trait.compose(
+							MC.makeView(this._messenger),
+							trait));
+					// bind any $ events to view functions
+					view.delegateEvents();
+					view.initialize();
+					return view;
+				},
+				Controller: function(trait) {
+					var controller = Object.create(
+						Object.prototype, 
+						trait);
+					return controller;
+				},
+				// overrides listener bind so that commands have context scope
+				// i.e. the fn has access to this.m and this.trigger
+				bind: function(e, fn) {
+					return this._messenger.bind(e, fn, this);
+				}
+			}),
+			MC.makeActor(messenger),
+			MC.makeListener(messenger)
+		);
+		return context;
 	};
 	
 	MC.Context = function(trait) {
