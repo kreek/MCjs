@@ -30,6 +30,65 @@
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
+	// UNIQUE
+	//
+	///////////////////////////////////////////////////////////////////////////
+	
+	MC.makeUnique = function() {
+		var guid = MC.guid();
+		return Trait({
+			id: guid
+		});
+	}
+	
+	///////////////////////////////////////////////////////////////////////////
+	//
+	// MAP
+	//
+	///////////////////////////////////////////////////////////////////////////
+	
+	MC.TMap = Trait({
+		count: 0,
+		dictionary: {},
+		put: function(key, value) {
+			if (!this.dictionary.key) {
+				this.dictionary.key = value;
+				this.count++;
+			} else {
+				throw "key exists"
+			}
+		},
+		get: function(key) {
+			if (this.dictionary.key) {
+				return this.dictionary.key;
+			} else {
+				throw "no value for that key"
+			}
+		},
+		remove: function(key) {
+			var obj = this.dictionary.key;
+			this.dictionary.key = null;
+			delete this.dictionary.key;
+			this.count--;
+			return obj;
+		},
+		getValue: function(value) {
+			for (obj in this.dictionary) {
+				if (this.dictionary[obj] == v) {
+					return obj;
+				}
+			}
+		},
+		size: function(){
+			return this.count;
+		},
+		load: function(data) {
+			this.dictionary = data;
+		}
+	});
+	
+	///////////////////////////////////////////////////////////////////////////
+	//
 	// OBSERVABLE
 	//
 	///////////////////////////////////////////////////////////////////////////
@@ -84,66 +143,11 @@
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
-	// UNIQUE
+	// EVENTS
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
-	MC.makeUnique = function() {
-		var guid = MC.guid();
-		return Trait({
-			id: guid
-		});
-	}
-	
-	///////////////////////////////////////////////////////////////////////////
-	//
-	// MAP
-	//
-	///////////////////////////////////////////////////////////////////////////
-	
-	MC.TMap = Trait({
-		count: 0,
-		put: function(key, value) {
-			if (!this.key) {
-				this.key = value;
-				this.count++;
-			} else {
-				throw "key exists"
-			}
-		},
-		get: function(key) {
-			if (this.key) {
-				return this.key;
-			} else {
-				throw "no value for that key"
-			}
-		},
-		remove: function(key) {
-			var obj = this.key;
-			this.key = null;
-			delete this.key;
-			this.count--;
-			return obj;
-		},
-		getValue: function(value) {
-			for (obj in this) {
-				if (this[obj] == v) {
-					return obj;
-				}
-			}
-		},
-		size: function(){
-			return this.count;
-		}
-	});
-	
-	///////////////////////////////////////////////////////////////////////////
-	//
-	// EVENTDISPATCHER
-	//
-	///////////////////////////////////////////////////////////////////////////
-	
-	MC.makeListener = function(messenger) {
+	MC.makeBindable = function(messenger) {
 		return Trait({
 			_messenger: messenger,
 			bind: function(e, fn, context) {
@@ -155,7 +159,7 @@
 		});
 	},
 	
-	MC.makeDispatcher = function(messenger) {
+	MC.makeTriggerable = function(messenger) {
 		return Trait({
 			_messenger: messenger,
 			trigger: function(eventName, body) {
@@ -166,6 +170,48 @@
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
+	// PERSISTANCE
+	//
+	///////////////////////////////////////////////////////////////////////////
+	
+	MC.TPersistable = Trait({
+		RL: Trait.required,
+		data: Object.create(Object.prototype, MC.TMap),
+		save: Trait.required,
+		get: Trait.required,
+		destroy: Trait.required,
+	});
+	
+	//MC.makeLocalService = function(RL) {
+	//	return Trait.compose(
+	//		MC.TPersistable,
+	//		Trait({
+	//			RL: RL,
+	//			retrieve: function() {
+	//				var json = JSON.parse(localStorage.getItem(this.RL));
+	//				this.data.load(json); 
+	//			},
+	//			set: function() {
+	//				localStorage.setItem(this.RL, JSON.stringify(this.data));
+	//			},
+	//			save: function(vo) {
+	//				this.data[vo.id] = vo.toJSON();
+	//				return this.set();
+	//			},
+	//			get: function(id) {
+	//				var obj = JSON.parse(this.data[id]);
+	//				return Trait.object(obj);
+	//			},
+	//			destroy: function() {
+	//				delete this.data[model.id];
+	//				return this.set();
+	//			}
+	//		})
+	//	);
+	//}
+	
+	///////////////////////////////////////////////////////////////////////////
+	//
 	// ACTOR
 	//
 	///////////////////////////////////////////////////////////////////////////
@@ -173,7 +219,7 @@
 	MC.makeActor = function(messenger) {
 		return Trait.compose(
 			MC.makeUnique(),
-			MC.makeDispatcher(messenger),
+			MC.makeTriggerable(messenger),
 			Trait({
 				initialize: function() {}
 			})
@@ -182,14 +228,14 @@
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
-	// MEDIATOR
+	// VIEW
 	//
 	///////////////////////////////////////////////////////////////////////////
 
 	MC.makeView = function(messenger, el) {
 		return Trait.compose( 
 			MC.makeActor(messenger), 
-			MC.makeListener(messenger),
+			MC.makeBindable(messenger),
 			Trait({
 				el: Trait.required,
 				eventSplitter: /^(\w+)\s*(.*)$/,
@@ -219,7 +265,7 @@
 	///////////////////////////////////////////////////////////////////////////
 	
 	MC.makeController = function(messenger) {
-		return MC.makeDispatcher(messenger);
+		return MC.makeTriggerable(messenger);
 	}
 	
 	///////////////////////////////////////////////////////////////////////////
@@ -262,6 +308,9 @@
 						trait);
 					return controller;
 				},
+				Service: function() {
+					return true;
+				},
 				// overrides listener bind so that commands have context scope
 				// i.e. the fn has access to this.m and this.trigger
 				bind: function(e, fn) {
@@ -269,7 +318,7 @@
 				}
 			}),
 			MC.makeActor(messenger),
-			MC.makeListener(messenger)
+			MC.makeBindable(messenger)
 		);
 		return context;
 	};
