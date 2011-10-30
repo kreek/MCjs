@@ -1,41 +1,103 @@
 describe("Service", function () {
-
-    beforeEach(function () {
-		this.service = Trait.create(Object.prototype, MC.TPersistable);
-    });
-
-	afterEach(function () {
-		this.i = 0;
-		this.j = 0;
-		this._messenger.unbind("event:test", this.obj.increment);
-	});
-
-	it("bind and trigger", function () {
-		this._messenger.bind("event:test", this.obj.increment, this);
-		this._messenger.trigger("event:test");
-		this._messenger.trigger("event:test");
-		this._messenger.trigger("event:test");
-		this._messenger.trigger("event:test");
-		this._messenger.trigger("event:test");
-		expect(this.i).toBe(5);
-	});
 	
-	it("bind then unbind", function () {
-		this._messenger.bind("event:test", this.obj.increment, this);
-		this._messenger.trigger("event:test");
-		this._messenger.unbind("event:test", this.obj.increment, this);
-		this._messenger.trigger("event:test");
-		expect(this.i).toBe(1);
-	});
+	describe("Local", function () {
+
+		beforeEach(function () {
+			this.mc = MC.Context();
+	    });
+
+		it("persists a value object", function () {
+			
+			localStorage.clear();
+			
+			var service = this.mc.Service(Trait({
+				type: "local",
+				resource: "Tests"
+			}));
+
+			var vo = this.mc.VO({name: "foo"});
+			var id = vo.id;
+			service.save(vo);
+			var store = JSON.parse(localStorage.getItem("Tests"));
+			
+			expect(store[id].id).toBe(id);
+			
+		});
+		
+		it("retrieves a value object", function () {
+			
+			localStorage.clear();
+			
+			var service = this.mc.Service(Trait({
+				type: "local",
+				resource: "Tests"
+			}));
+
+			var vo = this.mc.VO({name: "foo"});
+			var id = vo.id;
+			service.save(vo);
+			var savedVO = service.get(id);
+
+			expect(vo.id).toBe(savedVO.id);
+			
+		});
+		
+		it("destroys a value object", function () {
+			
+			localStorage.clear();
+			
+			var service = this.mc.Service(Trait({
+				type: "local",
+				resource: "Tests"
+			}));
+
+			var vo = this.mc.VO({name: "foo"});
+			var id = vo.id;
+			service.save(vo);
+			var savedVO = service.get(id);
+			
+			expect(vo.id).toBe(savedVO.id);
+
+			service.destroy(id);
+			var destroyedVO = service.get(id);
+			
+			expect(destroyedVO).toBeFalsy();
+			
+		});
+		
+		it("persists many value objects", function () {
+			
+			localStorage.clear();
+			
+			var service = this.mc.Service(Trait({
+				type: "local",
+				resource: "Tests"
+			}));
+
+			var vos = [
+				this.mc.VO({name: "a"}),
+				this.mc.VO({name: "b"}),
+				this.mc.VO({name: "c"})
+			];
 	
-	it("bind two functions to same event, unbind one", function () {
-		this._messenger.bind("event:test", this.obj.increment, this);
-		this._messenger.bind("event:test", this.obj.increment2, this);
-		this._messenger.trigger("event:test");
-		this._messenger.unbind("event:test", this.obj.increment, this);
-		this._messenger.trigger("event:test");
-		expect(this.i).toBe(1);
-		expect(this.j).toBe(2);
+			var ids = {
+				a: vos[0].id, 
+				b: vos[1].id, 
+				c: vos[2].id
+			};
+			
+			service.save(vos);
+			
+			var a = service.get(ids.a);
+			var b = service.get(ids.b);
+			var c = service.get(ids.c);
+			
+			expect(a.id).toBe(a.id);
+			expect(b.id).toBe(b.id);
+			expect(c.id).toBe(c.id);
+			
+		});
+
 	});
 
 });

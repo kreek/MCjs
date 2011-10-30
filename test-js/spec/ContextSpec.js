@@ -28,7 +28,7 @@ describe("Context", function () {
 				return true;
 			}
 		}));
-		console.log(controller);
+
 		expect(controller).not.toBeUndefined();
 		expect(controller).not.toBeNull();
 		expect(controller.a()).toBeTruthy();

@@ -170,48 +170,6 @@
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
-	// PERSISTANCE
-	//
-	///////////////////////////////////////////////////////////////////////////
-	
-	MC.TPersistable = Trait({
-		RL: Trait.required,
-		data: Object.create(Object.prototype, MC.TMap),
-		save: Trait.required,
-		get: Trait.required,
-		destroy: Trait.required,
-	});
-	
-	//MC.makeLocalService = function(RL) {
-	//	return Trait.compose(
-	//		MC.TPersistable,
-	//		Trait({
-	//			RL: RL,
-	//			retrieve: function() {
-	//				var json = JSON.parse(localStorage.getItem(this.RL));
-	//				this.data.load(json); 
-	//			},
-	//			set: function() {
-	//				localStorage.setItem(this.RL, JSON.stringify(this.data));
-	//			},
-	//			save: function(vo) {
-	//				this.data[vo.id] = vo.toJSON();
-	//				return this.set();
-	//			},
-	//			get: function(id) {
-	//				var obj = JSON.parse(this.data[id]);
-	//				return Trait.object(obj);
-	//			},
-	//			destroy: function() {
-	//				delete this.data[model.id];
-	//				return this.set();
-	//			}
-	//		})
-	//	);
-	//}
-	
-	///////////////////////////////////////////////////////////////////////////
-	//
 	// ACTOR
 	//
 	///////////////////////////////////////////////////////////////////////////
@@ -226,6 +184,58 @@
 		);
 	};
 	
+	///////////////////////////////////////////////////////////////////////////
+	//
+	// SERVICE
+	//
+	///////////////////////////////////////////////////////////////////////////
+	
+	MC.TPersistable = Trait({
+		resource: Trait.required,
+		data: Trait.required,
+		save: Trait.required,
+		get: Trait.required,
+		destroy: Trait.required,
+	});
+	
+	MC.makeLocalService = function(messenger) {
+		return Trait.override(
+			Trait({
+				data: null,
+				initialize: function() {
+					this.data = JSON.parse(localStorage.getItem(this.RL)) || {};
+					this.set();
+				},
+				set: function() {
+					localStorage.setItem(this.resource, JSON.stringify(this.data));
+				},
+				save: function(d) {
+					var array = [];
+					if (!d.length) {
+						array.push(d);
+					} else {
+						array = d;
+					}
+					for (i in array) {
+						var vo = array[i];
+						this.data[vo.id] = vo;
+					}
+					return this.set();
+				},
+				get: function(id) {
+					var vo = this.data[id];
+					return vo;
+				},
+				destroy: function(id) {
+					delete this.data[id];
+					return this.set();
+				}
+			}),
+			MC.TPersistable,
+			MC.makeActor(messenger)
+		);
+	}
+
 	///////////////////////////////////////////////////////////////////////////
 	//
 	// VIEW
@@ -308,8 +318,36 @@
 						trait);
 					return controller;
 				},
-				Service: function() {
-					return true;
+				Service: function(trait) {
+					var serviceTrait;
+					switch(trait.type.value) {
+						case "local":
+							serviceTrait = MC.makeLocalService();
+							break;
+						case "remote":
+							break;
+						default:
+							throw "No such service type";
+					}
+					var service = Object.create(
+						Object.prototype,
+						Trait.compose(
+							serviceTrait,
+							trait
+						)
+					);
+					service.initialize();
+					return service;
+				},
+				VO: function(obj) {
+					var vo = Object.create(
+						Object.prototype,
+						Trait.compose(
+							MC.makeUnique(),
+							Trait(obj)
+						)
+					);
+					return vo;
 				},
 				// overrides listener bind so that commands have context scope
 				// i.e. the fn has access to this.m and this.trigger
