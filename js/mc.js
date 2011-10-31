@@ -18,14 +18,20 @@
 	// version
 	MC.version = "0.0.1";
 	
-	// jQuery or Zepto own the `$` variable
-	var $ = this.jQuery || this.Zepto;
+	// jQuery owns the `$` variable
+	var $ = this.jQuery;
 	
-	MC.guid = function(){
+	MC.guid = function() {
 		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
 			var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
 			return v.toString(16);
 		}).toUpperCase();      
+	};
+	
+	MC.requireTrait = function(trait, type) {
+		if (!trait) {
+			throw "0 for 1 required arguments, pass in a trait to create a " + type;
+		}
 	};
 	
 	///////////////////////////////////////////////////////////////////////////
@@ -49,26 +55,26 @@
 	
 	MC.TMap = Trait({
 		count: 0,
-		dictionary: {},
+		dictionary: Trait.required,
 		put: function(key, value) {
-			if (!this.dictionary.key) {
-				this.dictionary.key = value;
+			if (!this.dictionary[key]) {
+				this.dictionary[key] = value;
 				this.count++;
 			} else {
 				throw "key exists"
 			}
 		},
 		get: function(key) {
-			if (this.dictionary.key) {
-				return this.dictionary.key;
+			if (this.dictionary[key]) {
+				return this.dictionary[key];
 			} else {
 				throw "no value for that key"
 			}
 		},
 		remove: function(key) {
-			var obj = this.dictionary.key;
-			this.dictionary.key = null;
-			delete this.dictionary.key;
+			var obj = this.dictionary[key];
+			this.dictionary[key] = null;
+			delete this.dictionary[key];
 			this.count--;
 			return obj;
 		},
@@ -87,12 +93,27 @@
 		}
 	});
 	
+	MC.makeMap = function() {
+		var map = Object.create(
+			Object.prototype,
+			Trait.compose(
+				MC.TMap,
+				Trait({
+					dictionary: {}
+				})
+			)
+		);
+		return map;
+	};
+	
 	///////////////////////////////////////////////////////////////////////////
 	//
 	// OBSERVABLE
 	//
 	///////////////////////////////////////////////////////////////////////////
-
+	
+	// TODO: helpful error message if binding fails
+	
 	MC.TObservable = Trait({
 		_fns: {},
 		bind: function(e, fn, context) {
@@ -147,9 +168,8 @@
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
-	MC.makeBindable = function(messenger) {
+	MC.makeBindable = function() {
 		return Trait({
-			_messenger: messenger,
 			bind: function(e, fn, context) {
 				return this._messenger.bind(e, fn, context);
 			},
@@ -159,9 +179,8 @@
 		});
 	},
 	
-	MC.makeTriggerable = function(messenger) {
+	MC.makeTriggerable = function() {
 		return Trait({
-			_messenger: messenger,
 			trigger: function(eventName, body) {
 				return this._messenger.trigger(eventName, body);
 			}
@@ -170,19 +189,54 @@
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
+	// VALUE OBJECT
+	//
+	///////////////////////////////////////////////////////////////////////////
+	
+	MC.VO = function(obj) {
+		var vo = Object.create(
+			Object.prototype,
+			Trait.compose(
+				MC.makeUnique(),
+				Trait(obj)
+			)
+		);
+		return vo;
+	};
+	
+	///////////////////////////////////////////////////////////////////////////
+	//
 	// ACTOR
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
-	MC.makeActor = function(messenger) {
+	MC.makeActor = function() {
 		return Trait.compose(
-			MC.makeUnique(),
-			MC.makeTriggerable(messenger),
+			MC.makeTriggerable(),
 			Trait({
+				_messenger: Trait.create(Object.prototype, MC.TObservable),
 				initialize: function() {}
 			})
 		);
 	};
+	
+	///////////////////////////////////////////////////////////////////////////
+	//
+	// PROXY
+	//
+	///////////////////////////////////////////////////////////////////////////
+	
+	MC.Proxy = function(trait) {
+		MC.requireTrait(trait, "proxy");
+		var actor = Object.create(
+			Object.prototype,
+			Trait.override(
+				trait,
+				MC.makeActor()
+			));
+		actor.initialize();
+		return actor;
+	}
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
@@ -198,7 +252,7 @@
 		destroy: Trait.required,
 	});
 	
-	MC.makeLocalService = function(messenger) {
+	MC.makeLocalService = function() {
 		return Trait.override(
 			Trait({
 				data: null,
@@ -226,15 +280,42 @@
 					var vo = this.data[id];
 					return vo;
 				},
+				all: function() {
+					return this.data;
+				},
 				destroy: function(id) {
 					delete this.data[id];
 					return this.set();
 				}
 			}),
 			MC.TPersistable,
-			MC.makeActor(messenger)
+			MC.makeActor()
 		);
-	}
+	};
+	
+	// remote or local service
+	MC.Service = function(trait) {
+		MC.requireTrait(trait, "service");
+		var serviceTrait;
+		switch(trait.type.value) {
+			case "local":
+				serviceTrait = MC.makeLocalService();
+				break;
+			case "remote":
+				break;
+			default:
+				throw "No such service type";
+		}
+		var service = Object.create(
+			Object.prototype,
+			Trait.compose(
+				serviceTrait,
+				trait
+			)
+		);
+		service.initialize();
+		return service;
+	},
 
 	///////////////////////////////////////////////////////////////////////////
 	//
@@ -242,31 +323,39 @@
 	//
 	///////////////////////////////////////////////////////////////////////////
 
-	MC.makeView = function(messenger, el) {
-		return Trait.compose( 
-			MC.makeActor(messenger), 
-			MC.makeBindable(messenger),
+	MC.makeView = function(el) {
+		return Trait.override( 
 			Trait({
 				el: Trait.required,
-				eventSplitter: /^(\w+)\s*(.*)$/,
-				delegateEvents: function() {
-					var eventName, key, match, fn, selector, results;
-					results = [];
-					for (key in this.events) {
-						fn = this[this.events[key]];
-						if (typeof fn !== 'function') {
-							throw "events must be bound to a function";
-						}
-						match = key.match(this.eventSplitter);
-						eventName = match[1];
-						selector = match[2];
-						results.push(this.el.bind(eventName, $.proxy(fn, this)));
+				// bind in views is either binding to a system event (2 arguments)
+				// or binding to an element's event (3 arguments)
+				bind: function(a, b, c) {
+					if (arguments.length == 3) {
+						// a:event, b: element, c: function
+						$(b).bind(a, $.proxy(c, this));
+					} else if (arguments.length == 2) {
+						// a:event, b:function
+						return this._messenger.bind(a, b, this);
 					}
-					return results;
-			    }
-			})
+				}
+			}),
+			MC.makeActor(), 
+			MC.makeBindable()
 		);
 	}
+
+	MC.View = function(trait) {
+		MC.requireTrait(trait, "view");
+		var view = Object.create(
+			Object.prototype, 
+			Trait.override(
+				trait,
+				MC.makeView()
+			)
+		);
+		view.initialize();
+		return view;
+	};
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
@@ -274,9 +363,17 @@
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
-	MC.makeController = function(messenger) {
-		return MC.makeTriggerable(messenger);
+	MC.makeController = function() {
+		return MC.makeTriggerable();
 	}
+	
+	MC.Controller = function(trait) {
+		MC.requireTrait(trait, "controller");
+		var controller = Object.create(
+			Object.prototype, 
+			trait);
+		return controller;
+	};
 	
 	///////////////////////////////////////////////////////////////////////////
 	//
@@ -284,79 +381,21 @@
 	//
 	///////////////////////////////////////////////////////////////////////////
 	
-	MC.makeContext = function(messenger) {
+	MC.makeContext = function() {
 		var context = Trait.override(
 			Trait({
-				// the system messenger, injected into all actors
-				_messenger: messenger,
 				// model dictionary 
-				m: Object.create(Object.prototype, MC.TMap),
-				Model: function(trait) {
-					var actor = Object.create(
-						Object.prototype,
-						Trait.override(
-							trait,
-							MC.makeActor(this._messenger)
-						));
-					actor.initialize();
-					return actor;
-				},
-				View: function(trait) {
-					var view = Object.create(
-						Object.prototype, 
-						Trait.compose(
-							MC.makeView(this._messenger),
-							trait));
-					// bind any $ events to view functions
-					view.delegateEvents();
-					view.initialize();
-					return view;
-				},
-				Controller: function(trait) {
-					var controller = Object.create(
-						Object.prototype, 
-						trait);
-					return controller;
-				},
-				Service: function(trait) {
-					var serviceTrait;
-					switch(trait.type.value) {
-						case "local":
-							serviceTrait = MC.makeLocalService();
-							break;
-						case "remote":
-							break;
-						default:
-							throw "No such service type";
-					}
-					var service = Object.create(
-						Object.prototype,
-						Trait.compose(
-							serviceTrait,
-							trait
-						)
-					);
-					service.initialize();
-					return service;
-				},
-				VO: function(obj) {
-					var vo = Object.create(
-						Object.prototype,
-						Trait.compose(
-							MC.makeUnique(),
-							Trait(obj)
-						)
-					);
-					return vo;
-				},
+				m: MC.makeMap(),
+				// service dictionary
+				s: MC.makeMap(),
 				// overrides listener bind so that commands have context scope
-				// i.e. the fn has access to this.m and this.trigger
+				// i.e. the fn has access to models, services and this.trigger
 				bind: function(e, fn) {
 					return this._messenger.bind(e, fn, this);
 				}
 			}),
-			MC.makeActor(messenger),
-			MC.makeBindable(messenger)
+			MC.makeActor(),
+			MC.makeBindable()
 		);
 		return context;
 	};
@@ -365,14 +404,14 @@
 		if (!trait) {
 			trait = Trait({});
 		}
-		var messenger = Trait.create(Object.prototype, MC.TObservable);
 		var context = Trait.create(
 			Object.prototype,
-			Trait.compose(
-				MC.makeContext(messenger),
-				trait
+			Trait.override(
+				trait,
+				MC.makeContext()
 			)
 		);
+		context.initialize();
 		return context;
 	}
 	

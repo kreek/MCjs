@@ -10,12 +10,12 @@ describe("Service", function () {
 			
 			localStorage.clear();
 			
-			var service = this.mc.Service(Trait({
+			var service = MC.Service(Trait({
 				type: "local",
 				resource: "Tests"
 			}));
 
-			var vo = this.mc.VO({name: "foo"});
+			var vo = MC.VO({name: "foo"});
 			var id = vo.id;
 			service.save(vo);
 			var store = JSON.parse(localStorage.getItem("Tests"));
@@ -28,12 +28,12 @@ describe("Service", function () {
 			
 			localStorage.clear();
 			
-			var service = this.mc.Service(Trait({
+			var service = MC.Service(Trait({
 				type: "local",
 				resource: "Tests"
 			}));
 
-			var vo = this.mc.VO({name: "foo"});
+			var vo = MC.VO({name: "foo"});
 			var id = vo.id;
 			service.save(vo);
 			var savedVO = service.get(id);
@@ -46,12 +46,12 @@ describe("Service", function () {
 			
 			localStorage.clear();
 			
-			var service = this.mc.Service(Trait({
+			var service = MC.Service(Trait({
 				type: "local",
 				resource: "Tests"
 			}));
 
-			var vo = this.mc.VO({name: "foo"});
+			var vo = MC.VO({name: "foo"});
 			var id = vo.id;
 			service.save(vo);
 			var savedVO = service.get(id);
@@ -69,15 +69,15 @@ describe("Service", function () {
 			
 			localStorage.clear();
 			
-			var service = this.mc.Service(Trait({
+			var service = MC.Service(Trait({
 				type: "local",
 				resource: "Tests"
 			}));
 
 			var vos = [
-				this.mc.VO({name: "a"}),
-				this.mc.VO({name: "b"}),
-				this.mc.VO({name: "c"})
+				MC.VO({name: "a"}),
+				MC.VO({name: "b"}),
+				MC.VO({name: "c"})
 			];
 	
 			var ids = {

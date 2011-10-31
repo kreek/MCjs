@@ -2,7 +2,7 @@ $(function(){
 	
 	this.mc = MC.Context();
 	
-	var model = this.mc.Model(Trait({
+	var model = MC.Proxy(Trait({
 		message: null,
 		initialize: function() {
 			this.message = "Hi!"
@@ -14,7 +14,7 @@ $(function(){
 		}
 	}));
 
-	var commands = this.mc.Controller(Trait({
+	var commands = MC.Controller(Trait({
 		
 		updateMessage: function(message) {
 			var model = this.m.get('model');
@@ -23,7 +23,7 @@ $(function(){
 		
 	}));
 	
-	var view = this.mc.View(Trait({
+	var view = MC.View(Trait({
 		el: $('#link'),
 		events: {
 			'click #link': 'clickHandler',

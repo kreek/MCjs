@@ -14,7 +14,7 @@ describe("Context", function () {
 	});
 	
 	it("creates a model", function () {
-		var model = this.mc.Model(Trait({
+		var model = MC.Proxy(Trait({
 			five: 5
 		}));
 		expect(model).not.toBeUndefined();
@@ -23,7 +23,7 @@ describe("Context", function () {
 	});
 	
 	it("creates a controller", function () {
-		var controller = this.mc.Controller(Trait({
+		var controller = MC.Controller(Trait({
 			a: function() {
 				return true;
 			}
@@ -35,11 +35,11 @@ describe("Context", function () {
 	});
 	
 	it("binds a function to an event", function () {
-		var model = this.mc.Model(Trait({
+		var model = MC.Proxy(Trait({
 			i: 0
 		}));
 
-		var controller = this.mc.Controller(Trait({
+		var controller = MC.Controller(Trait({
 			execute: function() {
 				var model = this.m.get('model');
 				model.i++;

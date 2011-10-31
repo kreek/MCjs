@@ -5,7 +5,7 @@ describe("VO", function () {
     });
 
 	it("has a unique id", function () {
-		var vo = this.mc.VO({
+		var vo = MC.VO({
 			name: "foo"
 		});
 		
