@@ -1,3 +1,11 @@
 h1. MCjs
 
 Yet another JavaScript MVC framework, this one is built on traits.js and enforces M => V => C flow. That is Models alert views of data changes, Views trigger commands (functions) in controllers, and Controllers update Models.
+
+h2. Examples
+
+"Hello, World!":https://github.com/kreek/MCjs/tree/master/examples/helloworld
+
+h2. Community
+
+"Google MCjs Group":https://groups.google.com/group/mcjs
