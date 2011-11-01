@@ -326,13 +326,16 @@
 	MC.makeView = function(el) {
 		return Trait.override( 
 			Trait({
-				el: Trait.required,
+				el: el,
 				// bind in views is either binding to a system event (2 arguments)
 				// or binding to an element's event (3 arguments)
 				bind: function(a, b, c) {
 					if (arguments.length == 3) {
 						// a:event, b: element, c: function
-						$(b).bind(a, $.proxy(c, this));
+						if ($(this.el+" "+b).length === 0) {
+							throw "View binding error: element '"+ b +"' does not exist";
+						}
+						$(this.el+" "+b).bind(a, $.proxy(c, this));
 					} else if (arguments.length == 2) {
 						// a:event, b:function
 						return this._messenger.bind(a, b, this);
@@ -350,7 +353,7 @@
 			Object.prototype, 
 			Trait.override(
 				trait,
-				MC.makeView()
+				MC.makeView(trait.el.value)
 			)
 		);
 		view.initialize();
