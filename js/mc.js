@@ -257,8 +257,7 @@
 			Trait({
 				data: null,
 				initialize: function() {
-					this.data = JSON.parse(localStorage.getItem(this.RL)) || {};
-					this.set();
+					this.data = JSON.parse(localStorage.getItem(this.resource)) || {};
 				},
 				set: function() {
 					localStorage.setItem(this.resource, JSON.stringify(this.data));
