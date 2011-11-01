@@ -324,20 +324,21 @@
 	///////////////////////////////////////////////////////////////////////////
 
 	MC.makeView = function(el) {
-		return Trait.override( 
+		var view = Trait.override( 
 			Trait({
+				//selector: selector,
 				el: el,
 				// bind in views is either binding to a system event (2 arguments)
 				// or binding to an element's event (3 arguments)
+				// this.el works as jquery element because it was set in MC.View
 				bind: function(a, b, c) {
 					if (arguments.length == 3) {
 						// a:event, b: element, c: function
-						if ($(this.el+" "+b).length === 0) {
-							throw "View binding error: element '"+ b +"' does not exist";
-						}
-						$(this.el+" "+b).bind(a, $.proxy(c, this));
+						// delegate binds future elements
+						this.el.delegate(b, a, $.proxy(c, this));
 					} else if (arguments.length == 2) {
 						// a:event, b:function
+						// bind to system event
 						return this._messenger.bind(a, b, this);
 					}
 				}
@@ -345,10 +346,15 @@
 			MC.makeActor(), 
 			MC.makeBindable()
 		);
+		return view;
 	}
 
 	MC.View = function(trait) {
 		MC.requireTrait(trait, "view");
+		// ensure the elements exists
+		if ($(trait.el.value) === 0) {
+			throw "View binding error: element with selector '"+ selector +"' does not exist";
+		}
 		var view = Object.create(
 			Object.prototype, 
 			Trait.override(
@@ -356,6 +362,7 @@
 				MC.makeView(trait.el.value)
 			)
 		);
+		view.el = $(view.el);
 		view.initialize();
 		return view;
 	};
