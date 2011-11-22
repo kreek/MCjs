@@ -198,7 +198,10 @@
 			Object.prototype,
 			Trait.compose(
 				MC.makeUnique(),
-				Trait(obj)
+				Trait(obj),
+				Trait({
+					isSaved: false
+				})
 			)
 		);
 		return vo;
@@ -271,6 +274,7 @@
 					}
 					for (i in array) {
 						var vo = array[i];
+						vo.isSaved = true;
 						this.data[vo.id] = vo;
 					}
 					return this.set();
@@ -340,7 +344,18 @@
 						// bind to system event
 						return this._messenger.bind(a, b, this);
 					}
-				}
+				},
+				unbind: function(a, b, c) {
+					if (arguments.length == 3) {
+						// a:event, b: element, c: function
+						// delegate binds future elements
+						this.el.undelegate(b, a, $.proxy(c, this));
+					} else if (arguments.length == 2) {
+						// a:event, b:function
+						// bind to system event
+						return this._messenger.unbind(a, b);
+					}
+				},
 			}),
 			MC.makeActor(), 
 			MC.makeBindable()
@@ -395,6 +410,8 @@
 			Trait({
 				// model dictionary 
 				m: MC.makeMap(),
+				// service dictionary
+				v: MC.makeMap(),
 				// service dictionary
 				s: MC.makeMap(),
 				// overrides listener bind so that commands have context scope
