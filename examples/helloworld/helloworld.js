@@ -1,5 +1,13 @@
 $(function(){
 	
+	/*
+	 * Obvioulsy overly complex for a hello world app
+	 * but it gives you an idea of to set up an app
+	 * with views dispatching and listening for events,
+	 * as well as commands being mapped to events
+	 *
+	 */
+	
 	this.mc = MC.Context(Trait({
 		
 		initialize: function() {
