@@ -25,7 +25,7 @@ $(function(){
 			var view = MC.View(Trait({
 				el: "#app",
 				initialize: function() {
-					this.bind("click", "#greetLink", this.update);
+					this.delegate("#greetLink", "click", this.update);
 					this.bind("model:updated", this.render);
 				},
 				update: function() {

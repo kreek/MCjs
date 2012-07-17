@@ -131,6 +131,7 @@
 					calls[e] = [];
 				} else {
 					var list = calls[e];
+					console.log(e, calls);
 					if (!list) return this;
 					for (var i = 0, l = list.length; i < l; i++) {
 						if (list[i] && fn === list[i][0]) {
@@ -153,6 +154,7 @@
 						if (!(fn = list[i])) {
 							list.splice(i, 1); i--; l--;
 						} else {
+							// TODO: catch type errors if function or args doesn't exist
 							fn[0].apply(fn[1] || this, [body]);
 						}
 					}
@@ -331,30 +333,20 @@
 			Trait({
 				//selector: selector,
 				el: el,
-				// bind in views is either binding to a system event (2 arguments)
-				// or binding to an element's event (3 arguments)
-				// this.el works as jquery element because it was set in MC.View
-				bind: function(a, b, c) {
-					if (arguments.length == 3) {
-						// a:event, b: element, c: function
-						// delegate binds future elements
-						this.el.delegate(b, a, $.proxy(c, this));
-					} else if (arguments.length == 2) {
-						// a:event, b:function
-						// bind to system event
-						return this._messenger.bind(a, b, this);
-					}
+				// bind to system events
+				bind: function(e, fn) {
+					return this._messenger.bind(e, fn, this);
 				},
-				unbind: function(a, b, c) {
-					if (arguments.length == 3) {
-						// a:event, b: element, c: function
-						// delegate binds future elements
-						this.el.undelegate(b, a, $.proxy(c, this));
-					} else if (arguments.length == 2) {
-						// a:event, b:function
-						// bind to system event
-						return this._messenger.unbind(a, b);
-					}
+				unbind: function(e, fn) {
+					return this._messenger.unbind(e, fn);
+				},
+				// delegate is passed on to jquery for dom events
+				// this.el works as jquery element because it was set in MC.View
+				delegate: function(el, e, fn) {
+					this.el.delegate(el, e, $.proxy(fn, this));
+				},
+				undelegate: function(el, e, fn) {
+					this.el.undelegate(el, e, $.proxy(fn, this));
 				},
 			}),
 			MC.makeActor(), 
