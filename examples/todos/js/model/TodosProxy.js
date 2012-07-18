@@ -9,9 +9,11 @@
 				title: title, 
 				completed: false
 			};
+			this.trigger("todos:update", this.todosArray());
 		},
 		removeTodo: function(id) {
 			delete this.todos[id];
+			this.trigger("todos:update", this.todosArray());
 		},
 		todosArray: function() {
 			// convert object to array for template

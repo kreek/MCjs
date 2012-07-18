@@ -1,10 +1,13 @@
 h1. MCjs
 
-Yet another JavaScript MVC framework, this one is built on traits.js and enforces M => V => C flow. That is Models alert views of data changes, Views trigger commands (functions) in controllers, and Controllers update Models.
+Yet another JavaScript MVC framework, this one is built on traits.js. In this case the 'C' in MVC stands for command (pattern). Views trigger events which are bound to commands. Commands update the models. Models trigger events that update views. 
+
+Thanks to traits.js there is one immutable system event dispatcher so many views and commands can respond to the same event. Note that models can only trigger but not respond to events. In large applications directly updating models, from a view dispatched event, can lead to confusion/unwanted side effects.
 
 h2. Examples
 
 "Hello, World!":https://github.com/kreek/MCjs/tree/master/examples/helloworld
+"Todos":https://github.com/kreek/MCjs/tree/master/examples/todos
 
 h2. Community
 
