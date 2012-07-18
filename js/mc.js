@@ -30,7 +30,8 @@
 	
 	MC.requireTrait = function(trait, type) {
 		if (!trait) {
-			throw "0 for 1 required arguments, pass in a trait to create a " + type;
+			var message = type + " is undefined: common mistakes are that the js file is not included or you misspelled the name of the " + type;
+			throw message;
 		}
 	};
 	
