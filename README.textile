@@ -9,6 +9,3 @@ h2. Examples
 "Hello, World!":https://github.com/kreek/MCjs/tree/master/examples/helloworld
 "Todos":https://github.com/kreek/MCjs/tree/master/examples/todos
 
-h2. Community
-
-"Google MCjs Group":https://groups.google.com/group/mcjs
